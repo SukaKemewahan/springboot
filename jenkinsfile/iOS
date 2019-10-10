@@ -1,0 +1,50 @@
+pipeline {
+  agent any
+    
+  tools {nodejs "node"}
+    
+  stages {
+        
+    stage('Fetching from Git') {
+      steps {
+        git 'https://github.com/project-xxx'
+      }
+    }
+        
+    stage('Build phase') {
+      steps {
+        sh 'npm install'
+        sh 'install react native'
+        sh 'install Xcode builder'
+        sh 'install cocoapods'
+        sh 'install Apple Cert'
+        sh 'Install Apple Provisioning Profile'
+        sh 'Build Project'
+        sh 'docker login'
+        sh 'docker build'
+        sh 'docker push'
+        sh 'helm install'
+        sh 'auto generate helm folder'
+        sh 'Copy ipa'
+        sh 'publish artefact'
+      }
+    }
+     
+    stage('Test phase') {
+      steps {
+         sh 'npm test'
+         sh 'npm audit'
+      }
+    }   
+
+    stage('Deployment phase') {
+      steps {
+        sh 'Download Artefact'
+        sh 'Kubernetes login'
+        sh 'Helm init'
+        sh 'Deploy artefact'
+        sh 'Upload to Apps Store'
+      }
+    }   
+  }
+}
