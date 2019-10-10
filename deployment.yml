@@ -1,0 +1,70 @@
+apiVersion:  extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ .Values.service.name }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.service.name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "service.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "service.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{.Values.service.targetPort}}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.envVars }}
+          env:
+            {{- range $key, $val := .Values.envVars }}
+            - name: {{ $key }}
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $.Values.service.name }}
+                  key: {{ $key }}
+            {{- end}}
+          {{end}}
+          {{- if eq (.Values.enableHealthcheck | default "yes") "yes" }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.healthcheck | default "/healthcheck"  }}
+              port: {{ .Values.service.targetPort }}
+            initialDelaySeconds: 3
+            periodSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.healthcheck | default "/healthcheck" }}
+              port: {{ .Values.service.targetPort }}
+            initialDelaySeconds: 3
+            periodSeconds: 3
+          {{end}}
+      {{if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        - name: {{ .Values.imagePullSecrets }}
+      {{end}}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
